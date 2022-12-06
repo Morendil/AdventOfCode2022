@@ -16,5 +16,5 @@ solve n = (+n) . length . takeWhile (\s -> (length $ nub s) /= n) . windows n
 main = do
     signal <- lines <$> readFile "day06.txt"
     mapM_ (print . part1) signal
-    print "---"
+    putStrLn "---"
     mapM_ (print . part2) signal
