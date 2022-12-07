@@ -1,25 +1,23 @@
+ {-# LANGUAGE DeriveFoldable #-}
 import Data.Char
 import Data.Maybe (fromJust)
 import Test.Hspec
 
-data Node = File String Int | Dir String [Node]
-    deriving (Eq, Show)
+data GenericNode a = File String a | Dir String [GenericNode a]
+    deriving (Eq, Show, Foldable)
+type Node = GenericNode Int
 type Path = [String]
 type State = (Node, Path)
 
 part1 :: Node -> Int
-part1 = sum . map totalSize . collect forPart1
+part1 = sum . map sum . collect forPart1
 
 part2 :: Node -> Int
-part2 tree = minimum $ filter (\x -> totalSize tree - x < 40000000) $ map totalSize $ collect isDir tree
-
-totalSize :: Node -> Int
-totalSize (File _ size) = size
-totalSize (Dir _ nodes) = sum $ map totalSize nodes
+part2 tree = minimum $ filter (\x -> sum tree - x < 40000000) $ map sum $ collect isDir tree
 
 forPart1 :: Node -> Bool
 forPart1 (File _ _) = False
-forPart1 dir = totalSize dir <= 100000
+forPart1 dir = sum dir <= 100000
 
 collect :: (Node -> Bool) -> Node -> [Node]
 collect pred dir@(Dir _ nodes) = [dir | pred dir] ++ concatMap (collect pred) nodes
