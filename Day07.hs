@@ -1,4 +1,3 @@
-import Text.ParserCombinators.ReadP
 import Data.Char
 import Data.Maybe (fromJust)
 import Test.Hspec
@@ -28,9 +27,6 @@ collect pred file = [file | pred file]
 
 navigate :: [String] -> Node
 navigate = fst . foldl execute (Dir "/" [], [])
-
-check :: [String] -> Path
-check = snd . foldl execute (Dir "/" [], [])
 
 execute :: State -> String -> State
 -- Don't worry about these two
@@ -81,9 +77,3 @@ test = hspec $ do
         execute (Dir "/" [Dir "a" []], ["a"]) "15 foo" `shouldBe` (Dir "/" [Dir "a" [File "foo" 15]], ["a"])
     it "executes file desc nested" $
         foldl execute (Dir "/" [],[]) ["$ cd /","$ ls","dir a","$ cd a","$ ls","dir b","$ cd b","$ ls","54 i"] `shouldBe` (Dir "/" [Dir "a" [Dir "b" [File "i" 54]]], ["b","a"])
-
-parseMaybe :: ReadP a -> String -> Maybe a
-parseMaybe parser input =
-    case reverse $ readP_to_S parser input of
-        [] -> Nothing
-        ((result, _):_) -> Just result
