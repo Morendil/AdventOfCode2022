@@ -36,9 +36,9 @@ execute :: State -> String -> State
 -- Don't worry about these two
 execute (node, path) cmd | cmd == "$ ls" = (node, path)
 execute (node, path) cmd | cmd == "$ cd /" = (node, path)
--- Push or pull
-execute (node, path) cmd | cmd == "$ cd .."  = (node, tail path)
+-- Push or pop
 execute (node, path) cmd | take 5 cmd == "$ cd "  = (node, drop 5 cmd:path)
+execute (node, path) cmd | cmd == "$ cd .."  = (node, tail path)
 -- Directory
 execute (node, path) cmd | take 4 cmd == "dir " = (insert node (reverse path) (Dir (drop 4 cmd) []), path)
 -- File
