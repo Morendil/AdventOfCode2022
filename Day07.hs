@@ -8,8 +8,11 @@ data Node = File String Int | Dir String [Node]
 type Path = [String]
 type State = (Node, Path)
 
-part1 :: [String] -> Int
-part1 = sum . map totalSize . collect forPart1 . navigate
+part1 :: Node -> Int
+part1 = sum . map totalSize . collect forPart1
+
+part2 :: Node -> Int
+part2 tree = minimum $ filter (\x -> totalSize tree - x < 40000000) $ map totalSize $ collect isDir tree
 
 totalSize :: Node -> Int
 totalSize (File _ size) = size
@@ -51,9 +54,14 @@ select :: String -> Path -> Node -> Node -> Node
 select name path toInsert node@(Dir candidate nodes) | candidate == name = insert node path toInsert
 select _ _ _ node = node
 
+isDir :: Node -> Bool
+isDir (Dir _ _ ) = True
+isDir _ = False
+
 main = do
-    log <- lines <$> readFile "day07.txt"
-    print $ part1 log
+    tree <- navigate . lines <$> readFile "day07.txt"
+    print $ part1 tree
+    print $ part2 tree
 
 test :: IO ()
 test = hspec $ do
