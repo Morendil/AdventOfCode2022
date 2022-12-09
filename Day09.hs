@@ -77,4 +77,4 @@ test = hspec $ do
         adjust (0,0) (2,1) `shouldBe` (1,1)
   describe "Moving multiple knots" $ do
     it "Preserves the length of a rope" $
-      property (\rope -> length rope == length (longAdjust rope))
+      property (\rope -> length rope == length (dragRope rope))
