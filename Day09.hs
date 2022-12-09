@@ -6,11 +6,6 @@ type Pair = (Int, Int)
 type State = (Pair, Pair)
 type LongRope = [Pair]
 
-unfold :: [String] -> String
-unfold = concatMap (go . words)
-    where go c@(cmd:n:_) = replicate (read n) (head cmd)
-          go x = error "Can't interpret command " ++ concat x
-
 dragHead :: LongRope -> Char -> LongRope
 dragHead rope dir = dragRope (newHead:tail rope)
     where newHead = move dir (head rope)
@@ -48,6 +43,11 @@ part1 = solve 2
 
 part2 :: String -> Int
 part2 = solve 10
+
+unfold :: [String] -> String
+unfold = concatMap (go . words)
+    where go c@(cmd:n:_) = replicate (read n) (head cmd)
+          go x = error "Can't interpret command " ++ concat x
 
 main = do
     commands <- lines <$> readFile "day09.txt"
