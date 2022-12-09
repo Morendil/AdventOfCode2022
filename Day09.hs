@@ -1,5 +1,6 @@
 import Data.List (nub)
 import Test.Hspec
+import Test.QuickCheck
 
 type Pair = (Int, Int)
 type State = (Pair, Pair)
@@ -7,20 +8,17 @@ type LongRope = [Pair]
 
 unfold :: [String] -> String
 unfold = concatMap (go . words)
-    where go (cmd:n:_) = replicate (read n) (head cmd)
+    where go c@(cmd:n:_) = replicate (read n) (head cmd)
+          go x = error "Can't interpret command " ++ concat x
 
-step :: State -> Char -> State
-step (ropeHead, ropeTail) dir = (newHead, adjust ropeTail newHead)
-    where newHead = move dir ropeHead
-
-longStep :: LongRope -> Char -> LongRope
-longStep rope dir = longAdjust (newHead:tail rope)
+dragHead :: LongRope -> Char -> LongRope
+dragHead rope dir = dragRope (newHead:tail rope)
     where newHead = move dir (head rope)
 
-longAdjust :: LongRope -> LongRope
-longAdjust [tailKnot] = [tailKnot]
-longAdjust (headKnot:follower:rest) = headKnot:longAdjust (adjusted:rest)
+dragRope :: LongRope -> LongRope
+dragRope (headKnot:follower:rest) = headKnot:dragRope (adjusted:rest)
     where adjusted = adjust follower headKnot
+dragRope shorter = shorter
 
 adjust :: Pair -> Pair -> Pair
 adjust (ox,oy) (hx,hy) = (nx, ny)
@@ -34,18 +32,22 @@ move 'R' (x,y) = (x+1,y)
 move 'L' (x,y) = (x-1,y)
 move 'U' (x,y) = (x,y+1)
 move 'D' (x,y) = (x,y-1)
+move c _ = error $ "Unknown direction " ++ [c]
 
-positions :: String -> [Pair]
-positions = map snd . scanl step ((0,0),(0,0))
+tailPositions :: LongRope -> String -> [Pair]
+tailPositions rope = map last . scanl dragHead rope
 
-positions2 :: String -> [Pair]
-positions2 = map last . scanl longStep (replicate 10 (0,0))
+rope :: Int -> LongRope
+rope n = replicate n (0,0)
+
+solve :: Int -> String -> Int
+solve n = length . nub . tailPositions (rope n)
 
 part1 :: String -> Int
-part1 = length . nub . positions
+part1 = solve 2
 
 part2 :: String -> Int
-part2 = length . nub . positions2
+part2 = solve 10
 
 main = do
     commands <- lines <$> readFile "day09.txt"
@@ -54,7 +56,7 @@ main = do
 
 test :: IO ()
 test = hspec $ do
-  describe "Adjusting" $ do
+  describe "Adjusting a knot" $ do
     it "Doesn't adjust tail if less than 1 away, horizontally" $
         adjust (0,0) (1,0) `shouldBe` (0,0)
     it "Doesn't adjust tail if less than 1 away, vertically" $
@@ -73,3 +75,6 @@ test = hspec $ do
         adjust (0,0) (1,2) `shouldBe` (1,1)
     it "Adjusts tail so that it catches up, diagonally, right" $
         adjust (0,0) (2,1) `shouldBe` (1,1)
+  describe "Moving multiple knots" $ do
+    it "Preserves the length of a rope" $
+      property (\rope -> length rope == length (longAdjust rope))
