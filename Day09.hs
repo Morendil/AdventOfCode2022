@@ -3,6 +3,7 @@ import Test.Hspec
 
 type Pair = (Int, Int)
 type State = (Pair, Pair)
+type LongRope = [Pair]
 
 unfold :: [String] -> String
 unfold = concatMap (go . words)
@@ -11,6 +12,15 @@ unfold = concatMap (go . words)
 step :: State -> Char -> State
 step (ropeHead, ropeTail) dir = (newHead, adjust ropeTail newHead)
     where newHead = move dir ropeHead
+
+longStep :: LongRope -> Char -> LongRope
+longStep rope dir = longAdjust (newHead:tail rope)
+    where newHead = move dir (head rope)
+
+longAdjust :: LongRope -> LongRope
+longAdjust [tailKnot] = [tailKnot]
+longAdjust (headKnot:follower:rest) = headKnot:longAdjust (adjusted:rest)
+    where adjusted = adjust follower headKnot
 
 adjust :: Pair -> Pair -> Pair
 adjust (ox,oy) (hx,hy) = (nx, ny)
@@ -28,12 +38,19 @@ move 'D' (x,y) = (x,y-1)
 positions :: String -> [Pair]
 positions = map snd . scanl step ((0,0),(0,0))
 
+positions2 :: String -> [Pair]
+positions2 = map last . scanl longStep (replicate 10 (0,0))
+
 part1 :: String -> Int
 part1 = length . nub . positions
+
+part2 :: String -> Int
+part2 = length . nub . positions2
 
 main = do
     commands <- lines <$> readFile "day09.txt"
     print $ part1 $ unfold commands
+    print $ part2 $ unfold commands
 
 test :: IO ()
 test = hspec $ do
