@@ -12,7 +12,8 @@ part2 :: [String] -> [String]
 part2 instructions = [[pixel x y | x <- [0..39]] | y <- [0..5]]
     where xvalues = unfold instructions
           sprite x y = xvalues !! ((y*40)+x)
-          pixel x y = if x == sprite x y - 1 || x == sprite x y || x == sprite x y + 1 then '#' else '.'
+          pixel x y = if x `elem` [middle-1,middle,middle+1] then '#' else '.'
+            where middle = sprite x y
 
 main = do
     instructions <- lines <$> readFile "day10.txt"
