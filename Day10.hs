@@ -4,7 +4,7 @@ unfold = reverse . foldl expand [1]
           expand (last:rest) addx = (read $ drop 5 addx)+last:last:last:rest
 
 part1 :: [String] -> Int
-part1 instructions = sum $ map (\n -> signal !! (n-1)) [20, 60, 100, 140, 180, 220]
+part1 instructions = sum $ [signal !! (n-1) | n <- [20, 60, 100, 140, 180, 220]]
     where xvalues = unfold instructions
           signal = zipWith (*) xvalues [1..]
 
