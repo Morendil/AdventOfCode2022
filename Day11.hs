@@ -44,13 +44,10 @@ number :: ReadP Int
 number = read <$> many1 (satisfy isNumber)
 
 arg :: ReadP (Int -> Int)
-arg = choice [old, const <$> number]
-      where old = do; string "old"; return id
+arg = choice [string "old" *> return id, const <$> number]
 
 op :: ReadP (Int -> Int -> Int)
-op = choice [mult, add]
-     where mult = do; string " * "; return (*)
-           add = do; string " + "; return (+)
+op = choice [string " * " *> return (*), string " + " *> return (+)]
 
 monkey :: ReadP Monkey
 monkey = do
