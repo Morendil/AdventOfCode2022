@@ -20,22 +20,24 @@ instance Show Monkey where
 
 type Monkeys = IM.IntMap Monkey
 
-oneTurn :: Monkeys -> Int -> Monkeys
-oneTurn monkeys index = emptyInventory $ foldl (inspectBy current) monkeys currentItems
+oneRound :: Int -> Monkeys -> Monkeys
+oneRound zenLevel monkeys = foldl (oneTurn zenLevel) monkeys [0..length monkeys-1]
+
+oneTurn :: Int -> Monkeys -> Int -> Monkeys
+oneTurn zenLevel monkeys index = emptyInventory $ foldl (inspectBy zenLevel current) monkeys currentItems
     where current = fromJust $ IM.lookup index monkeys
           currentItems = items current
           emptyInventory afterTurn = IM.insert index (current {items=[], inspected=inspected current + length currentItems}) afterTurn
 
-oneRound :: Monkeys -> Monkeys
-oneRound monkeys = foldl oneTurn monkeys [0..length monkeys-1]
-
-inspectBy :: Monkey -> Monkeys -> Int -> Monkeys
-inspectBy inspector monkeys worryLevel = IM.insert target updated monkeys
+inspectBy :: Int -> Monkey -> Monkeys -> Int -> Monkeys
+inspectBy zenLevel inspector monkeys worryLevel = IM.insert target updated monkeys
     where Monkey { items=_, operation, args, test, rule } = inspector
           targeted = fromJust $ IM.lookup target monkeys
           updated = targeted {items=newWorry:items targeted}
           (arg1, arg2) = args
-          newWorry = operation (arg1 worryLevel) (arg2 worryLevel) `div` 3
+          increasedWorry = operation (arg1 worryLevel) (arg2 worryLevel)
+          -- This is a bit quick and dirty… part1/part2 logic switch
+          newWorry = if zenLevel == 0 then increasedWorry `div` 3 else increasedWorry `mod` zenLevel
           target = if newWorry `mod` test == 0 then fst rule else snd rule
 
 number :: ReadP Int
@@ -64,11 +66,17 @@ monkey = do
 
 part1 :: Monkeys -> Int
 part1 monkeys = product $ take 2 $ reverse $ sort $ map inspected $ IM.elems final
-    where final = last $ take 21 $ iterate oneRound monkeys
+    where final = last $ take 21 $ iterate (oneRound 0) monkeys
+
+part2 :: Monkeys -> Int
+part2 monkeys = product $ take 2 $ reverse $ sort $ map inspected $ IM.elems final
+    where final = last $ take 10001 $ iterate (oneRound zenLevel) monkeys
+          zenLevel = product $ map test $ IM.elems monkeys
 
 main = do
     monkeys <- IM.fromList . zip [0..] . fromJust . parseMaybe (sepBy1 monkey (string "\n\n")) <$> readFile "day11.txt"
     print $ part1 monkeys
+    print $ part2 monkeys
 
 parseMaybe :: ReadP a -> String -> Maybe a
 parseMaybe parser input =
