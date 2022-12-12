@@ -25,4 +25,9 @@ main = do
         around pt = H.fromList $ filter (reachable pt . at grid) (neighbours pt)
         start = head [(x,y)| x<-[0..width], y<-[0..height],at grid (x,y)==Just 'S']
         goal = head [(x,y)| x<-[0..width], y<-[0..height],at grid (x,y)==Just 'E']
+    -- part1
     print $ length $ fromJust $ aStar around (\from to -> 1) (manhattan start) (== goal) start
+    -- part2
+    let candidates = [(x,y)| x<-[0..width], y<-[0..height],at grid (x,y)==Just 'S' || at grid (x,y)==Just 'a']
+        paths = map (\start -> aStar around (\from to -> 1) (manhattan start) (== goal) start) candidates
+    print $ minimum $ map length $ catMaybes paths
