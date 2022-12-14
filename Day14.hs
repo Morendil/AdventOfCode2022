@@ -28,6 +28,12 @@ step yMax (State scan done) = State scan' isDone
         isDone = yrest >= yMax
         (xrest,yrest) = fallDown yMax scan (500,0)
 
+step2 :: Int -> State -> State
+step2 yMax (State scan done) = State scan' isDone
+  where scan' = if isDone then scan else M.insert (xrest,yrest) 'o' scan
+        isDone = yrest == 0
+        (xrest,yrest) = fallDown yMax scan (500,0)
+
 fallDown :: Int -> Scan -> Point -> Point
 fallDown yMax scan pt = if done then reached else fallDown yMax scan reached
     where (reached, done) = fall yMax scan pt
@@ -46,17 +52,35 @@ fall yMax scan (sx,sy) = (reached, done)
         canDropRight = supported && M.findWithDefault '.' right scan == '.'
         supported = M.findWithDefault '.' (bx,by+1) scan /= '.'
 
-main = do
-    veins <- fromJust . parseMaybe veins <$> readFile "day14_sample.txt"
-    let scan = scanAll veins
+part1 :: [[Point]] -> [State]
+part1 veins = takeUntil isDone $ iterate (step yMax) initial
+    where
+        scan = scanAll veins
         initial = State scan False
         (_,(_,yMax)) = bounds $ M.keys scan
-        isDone (State _ done) = done
-        getScan (State scan _) = scan
-        states = takeUntil isDone $ iterate (step yMax) initial
+        isDone (State _ done) = done        
+
+part2 :: [[Point]] -> [State]
+part2 veins = takeUntil isDone $ iterate (step2 (yMax+2)) initial
+    where
+        floor = [(500-yMax-4,yMax+2),(500+yMax+4,yMax+2)]
+        firstScan = scanAll veins
+        scan = scanAll $ floor:veins
+        initial = State scan False
+        (_,(_,yMax)) = bounds $ M.keys firstScan
+        isDone (State _ done) = done        
+
+main = do
+    veins <- fromJust . parseMaybe veins <$> readFile "day14.txt"
     -- part1
-    print $ length states - 2
-    putStrLn $ unlines $ display $ getScan $ last states
+    let part1States = part1 veins
+        getScan (State scan _) = scan
+    print $ length part1States - 2
+    -- putStrLn $ unlines $ display $ getScan $ last part1States
+    -- part2
+    let part2States = part2 veins
+    print $ length part2States - 1
+    -- putStrLn $ unlines $ display $ getScan $ last part2States
 
 -- Parsing
 
