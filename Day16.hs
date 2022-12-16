@@ -7,14 +7,15 @@ import Data.Functor (($>))
 import Data.List
 import Data.Ord
 import qualified Data.Map as M
+import qualified Data.Set as S
 
 data Valve = Valve { name :: String, rate :: Int, exits :: [String]}
     deriving (Eq, Show)
-data State = State { location :: String, open :: [String], totalRate :: Int, pressure :: Int, time :: Int }
+data State = State { location :: String, open :: [String], pressure :: Int }
     deriving (Eq, Show)
 
 instance Ord State where
-    compare State {location=l1,open=o1,time=t1,pressure=p1} State {location=l2,open=o2,time=t2,pressure=p2} = compare (p1,t1,o1,l1) (p2,t2,o2,l2)
+    compare State {location=l1,open=o1,pressure=p1} State {location=l2,open=o2,pressure=p2} = compare (p1,o1,l1) (p2,o2,l2)
 
 type Chart = M.Map String Valve
 type Dists = M.Map (String, String) Int
@@ -23,24 +24,17 @@ chart :: [Valve] -> Chart
 chart = foldMap insertOne
     where insertOne v@Valve {name} = M.insert name v M.empty
 
--- neighbours :: Chart -> State -> [State]
--- neighbours chart State { location, open, totalRate, pressure, time } = stay:moves
---     where get valve = fromJust $ M.lookup valve chart
---           Valve {exits} = get location
---           moves = concatMap moveTo exits
---           stay = justMove location
---           moveTo name = let Valve {rate} = get name in if name `elem` open || rate == 0 then [justMove name] else [moveAndOpen name rate, justMove name]
---           moveAndOpen name rate =  State { location=name, open=name:open, totalRate=totalRate+rate, pressure=pressure-(totalRate*2), time=time-2 }
---           justMove name = State { location=name, open=open, totalRate=totalRate, pressure=pressure-totalRate, time=time-1 }
-
-neighbours :: Chart -> State -> [State]
-neighbours chart State { location, open, totalRate, pressure, time } = moves
+neighbours :: Chart -> Int -> State -> [State]
+neighbours chart time state@State { location, open, pressure } = openHere ++ moves
     where get valve = fromJust $ M.lookup valve chart
-          Valve {exits} = get location
-          moves = concatMap moveTo exits
-          moveTo name = let Valve {rate} = get name in if name `elem` open || rate == 0 then [justMove name] else [moveAndOpen name rate, justMove name]
-          moveAndOpen name rate =  State { location=name, open=name:open, totalRate=totalRate+rate, pressure=pressure-(totalRate*2), time=time-2 }
-          justMove name = State { location=name, open=open, totalRate=totalRate, pressure=pressure-totalRate, time=time-1 }
+          Valve {rate, exits} = get location
+          moves = map moveTo exits
+          moveTo name = state { location=name }
+          openHere = if location `elem` open || rate == 0 then [] else [state { open=location:open, pressure=pressure+(rate*(time-1)) }]
+
+advance :: Chart -> (Int, [State]) -> (Int, [State])
+advance chart (time, states) = (time-1, keepBest $ concatMap (neighbours chart time) states)
+    where keepBest = M.elems . M.fromListWith max . map (\s -> ((location s, open s),s))
 
 dist :: Chart -> String -> String -> Int
 dist chart from to = length $ fromJust $ bfs neighbours (==to) from
@@ -67,18 +61,16 @@ dists :: [Valve] -> Dists
 dists valves = M.fromList $ [((from,to),dist charted from to) | from<-map name valves, to<-map name valves]
     where charted = chart valves
 
-part1 :: [Valve] -> [State]
-part1 valves = fromJust path
+part1 :: [Valve] -> Int
+part1 valves = pressure $ maximum $ snd $ last $ take n $ iterate (advance charted) initial
     where charted = chart valves
-          done state = sort (open state) == ["BB", "CC", "DD", "EE", "HH", "JJ"]
-          start = State { location="AA", open=[], totalRate=0, pressure=0, time=30 }
-          path = bfs (neighbours charted) done start
+          start = State { location="AA", open=[], pressure=0 }
+          initial = (n, [start])
+          n = 30
 
 main = do
-    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16_sample.txt"
-    let charted = chart valves
-        unstuck = map name $ filter ((/=)0 . rate) valves
-    print $ maximumBy (comparing (foldl (score charted) (0,30,"AA"))) $ permutations unstuck
+    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16.txt"
+    print $ part1 valves
 
 valve :: ReadP Valve
 valve = do
