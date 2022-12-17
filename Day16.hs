@@ -1,21 +1,22 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TupleSections #-}
 import Text.ParserCombinators.ReadP
-import Algorithm.Search
 import Data.Maybe (fromJust, mapMaybe)
 import Data.Char (isNumber, isAlpha)
-import Data.Functor (($>))
+import Data.Functor
 import Data.List
+import Data.List.HT (takeUntil)
 import Data.Ord
 import qualified Data.Map as M
 import qualified Data.Set as S
 
-data Valve = Valve { name :: String, rate :: Int, exits :: [String]}
+data Valve = Valve { name :: String, rate :: Int, exits :: [(String,Int)]}
     deriving (Eq, Show)
-data State = State { location :: String, open :: S.Set String, pressure :: Int }
+data State = State { location :: String, open :: S.Set String, pressure :: Int, time::Int }
     deriving (Eq, Show)
 
 instance Ord State where
-    compare State {location=l1,open=o1,pressure=p1} State {location=l2,open=o2,pressure=p2} = compare (p1,o1,l1) (p2,o2,l2)
+    compare State {location=l1,open=o1,pressure=p1,time=t1} State {location=l2,open=o2,pressure=p2,time=t2} = compare (p1,t1,o1,l1) (p2,t2,o2,l2)
 
 type Chart = M.Map String Valve
 type Dists = M.Map (String, String) Int
@@ -24,62 +25,52 @@ chart :: [Valve] -> Chart
 chart = foldMap insertOne
     where insertOne v@Valve {name} = M.insert name v M.empty
 
-neighbours :: Chart -> Int -> State -> [State]
-neighbours chart time state@State { location, open, pressure } = openHere ++ moves
+adjust :: [Valve] -> [Valve]
+adjust valves = filter (not.isShut) $ go (filter isShut valves) valves
+    where go [] valves = valves
+          go (shut:_) valves = let rest = filter ((/=)(name shut).name) valves in go (filter isShut valves) (map (unlink shut) rest)
+
+isShut Valve{name,rate} = name /= "AA" && rate==0
+
+unlink :: Valve -> Valve -> Valve
+unlink remove@Valve{name=xname,exits=rx} v@Valve{name,exits} = if xname `elem` (map fst exits) then v {exits=exits'} else v
+    where exits' = let m = M.fromList exits in M.assocs $ M.delete xname $ M.insert theOther (succ $ M.findWithDefault 1 xname m) $ m
+          theOther = head $ map fst rx \\ [name]
+
+neighbours :: Chart -> State -> [State]
+neighbours chart state@State { location, open, pressure, time } = if time == 0 then [state] else openHere ++ moves
     where get valve = fromJust $ M.lookup valve chart
           Valve {rate, exits} = get location
-          moves = map moveTo exits
-          moveTo name = state { location=name }
-          openHere = if location `S.member` open || rate == 0 then [] else [state { open=S.insert location open, pressure=pressure+(rate*(time-1)) }]
+          moves = [state { location=name, time=max 0 time' } | (name,cost) <- exits, let time'=time-cost]
+          openHere = if location `S.member` open || rate == 0 || time == 0 then [] else [state { open=S.insert location open, pressure=pressure+(rate*(time-1)), time=time-1 }]
 
-advance :: Chart -> (Int, [State]) -> (Int, [State])
-advance chart (time, states) = (time-1, keepBest $ concatMap (neighbours chart time) states)
-    where keepBest = M.elems . M.fromListWith max . map (\s -> ((location s, open s),s))
-
-dist :: Chart -> String -> String -> Int
-dist chart from to = length $ fromJust $ bfs neighbours (==to) from
-    where get valve = fromJust $ M.lookup valve chart
-          neighbours v = exits $ get v
-
-value :: Chart -> Int -> String -> String -> Int
-value chart time from to = (rate $ get to) * (time - (dist chart from to + 1))
-    where get valve = fromJust $ M.lookup valve chart
-
-score :: Chart -> (Int, Int, String) -> String -> (Int, Int, String)
-score chart (before,time,from) to = (before+(time'*(rate $ get to)), time', to)
-    where get valve = fromJust $ M.lookup valve chart
-          cost = 1 + dist chart from to
-          time' = time - cost
-
-score' :: Dists -> Chart -> (Int, Int, String) -> String -> (Int, Int, String)
-score' dists chart (before,time,from) to = (before+(time'*(rate $ get to)), time', to)
-    where get valve = fromJust $ M.lookup valve chart
-          cost = 1 + (fromJust $ M.lookup (from,to) dists)
-          time' = time - cost
-
-dists :: [Valve] -> Dists
-dists valves = M.fromList $ [((from,to),dist charted from to) | from<-map name valves, to<-map name valves]
-    where charted = chart valves
+advance :: Chart -> ([State], Bool) -> ([State], Bool)
+advance chart (states, True) = (states, True)
+advance chart (states, _) = (keepBest $ newStates, done)
+    where newStates = concatMap (neighbours chart) states
+          done = length newStates == length states
+          keepBest = M.elems . M.fromListWith max . map (\s -> ((location s, open s),s))
 
 part1 :: [Valve] -> Int
-part1 valves = maximum $ map pressure $ snd $ last $ take n $ iterate (advance charted) initial
+part1 valves = maximum $ map pressure $ fst $ last $ takeUntil snd $ iterate (advance charted) ([start],False)
     where charted = chart valves
-          start = State { location="AA", open=S.empty, pressure=0 }
-          initial = (n, [start])
-          n = 30
+          start = State { location="AA", open=S.empty, pressure=0, time=30 }
 
 part2 :: [Valve] -> Int
 part2 valves = maximum $ [pressure s1 + pressure s2 | s1:elephants <- tails pathsTaken, s2 <- elephants, S.disjoint (open s1) (open s2)]
     where charted = chart valves
-          start = State { location="AA", open=S.empty, pressure=0 }
-          initial = (n, [start])
-          n = 26
-          pathsTaken = snd $ last $ take n $ iterate (advance charted) initial
+          start = State { location="AA", open=S.empty, pressure=0, time=26 }
+          pathsTaken = fst $ last $ takeUntil snd $ iterate (advance charted) ([start],False)
 
 main = do
     valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16_sample.txt"
-    print $ part1 valves
-    print $ part2 valves
+    print $ part1 $ adjust valves
+    print $ part2 $ adjust valves
+
+display :: [Valve] -> [String]
+display valves = map nodeSpec valves ++ concatMap edgeSpec valves
+    where nodeSpec Valve { name , rate } = name ++ " [label = \"" ++ name ++ " (" ++ show rate ++ ")\"];"
+          edgeSpec Valve { name , exits } = map (\s -> name ++ " -> " ++ s ++ ";") (map fst exits)
 
 valve :: ReadP Valve
 valve = do
@@ -88,13 +79,8 @@ valve = do
     string " has flow rate="
     rate <- number
     choice [string "; tunnels lead to valves ", string "; tunnel leads to valve "]
-    exits <- sepBy1 (many1 (satisfy isAlpha)) (string ", ")
+    exits <- map (,1) <$> sepBy1 (many1 (satisfy isAlpha)) (string ", ")
     return Valve {name, rate, exits}
-
-display :: [Valve] -> [String]
-display valves = map nodeSpec valves ++ concatMap edgeSpec valves
-    where nodeSpec Valve { name , rate } = name ++ " [label = \"" ++ name ++ " (" ++ show rate ++ ")\"];"
-          edgeSpec Valve { name , exits } = map (\s -> name ++ " -> " ++ s ++ ";") exits
 
 number :: ReadP Int
 number = do
