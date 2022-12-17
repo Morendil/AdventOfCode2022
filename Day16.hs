@@ -11,7 +11,7 @@ import qualified Data.Set as S
 
 data Valve = Valve { name :: String, rate :: Int, exits :: [String]}
     deriving (Eq, Show)
-data State = State { location :: String, open :: [String], pressure :: Int }
+data State = State { location :: String, open :: S.Set String, pressure :: Int }
     deriving (Eq, Show)
 
 instance Ord State where
@@ -30,7 +30,7 @@ neighbours chart time state@State { location, open, pressure } = openHere ++ mov
           Valve {rate, exits} = get location
           moves = map moveTo exits
           moveTo name = state { location=name }
-          openHere = if location `elem` open || rate == 0 then [] else [state { open=location:open, pressure=pressure+(rate*(time-1)) }]
+          openHere = if location `S.member` open || rate == 0 then [] else [state { open=S.insert location open, pressure=pressure+(rate*(time-1)) }]
 
 advance :: Chart -> (Int, [State]) -> (Int, [State])
 advance chart (time, states) = (time-1, keepBest $ concatMap (neighbours chart time) states)
@@ -64,13 +64,22 @@ dists valves = M.fromList $ [((from,to),dist charted from to) | from<-map name v
 part1 :: [Valve] -> Int
 part1 valves = pressure $ maximum $ snd $ last $ take n $ iterate (advance charted) initial
     where charted = chart valves
-          start = State { location="AA", open=[], pressure=0 }
+          start = State { location="AA", open=S.empty, pressure=0 }
           initial = (n, [start])
           n = 30
+
+part2 :: [Valve] -> Int
+part2 valves = maximum $ [pressure s1 + pressure s2 | s1:elephants <- tails pathsTaken, s2 <- elephants, S.null $ S.intersection (open s1) (open s2)]
+    where charted = chart valves
+          start = State { location="AA", open=S.empty, pressure=0 }
+          initial = (n, [start])
+          n = 26
+          pathsTaken = snd $ last $ take n $ iterate (advance charted) initial
 
 main = do
     valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16.txt"
     print $ part1 valves
+    print $ part2 valves
 
 valve :: ReadP Valve
 valve = do
