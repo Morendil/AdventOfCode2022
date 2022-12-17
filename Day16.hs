@@ -62,14 +62,14 @@ dists valves = M.fromList $ [((from,to),dist charted from to) | from<-map name v
     where charted = chart valves
 
 part1 :: [Valve] -> Int
-part1 valves = pressure $ maximum $ snd $ last $ take n $ iterate (advance charted) initial
+part1 valves = length $ snd $ last $ take n $ iterate (advance charted) initial
     where charted = chart valves
           start = State { location="AA", open=S.empty, pressure=0 }
           initial = (n, [start])
           n = 30
 
 part2 :: [Valve] -> Int
-part2 valves = maximum $ [pressure s1 + pressure s2 | s1:elephants <- tails pathsTaken, s2 <- elephants, S.null $ S.intersection (open s1) (open s2)]
+part2 valves = maximum $ [pressure s1 + pressure s2 | s1:elephants <- tails pathsTaken, s2 <- elephants, S.disjoint (open s1) (open s2)]
     where charted = chart valves
           start = State { location="AA", open=S.empty, pressure=0 }
           initial = (n, [start])
