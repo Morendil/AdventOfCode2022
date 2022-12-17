@@ -18,11 +18,16 @@ pieces = [
 add (x1,y1) (x2,y2) = (x1+x2,y1+y2)
 
 move :: State -> State
-move state@(grid,moves,piece) = move' state (2,yMax+3)
+move state@(grid,moves,piece) = tetris
     where yMax = if S.null grid then 0 else 1+(maximum $ S.map snd $ grid)
+          yMin = if S.null grid then 0 else 1+(minimum $ S.map snd $ grid)
+          tetris = if null tetrisLines then state' else cleanup
+          tetrisLines = filter (\y -> all (\x -> (x,y) `S.member` grid') [0..6]) [yMin..yMax]
+          cleanup = (S.filter (((<=)(maximum tetrisLines)).snd) grid', move', piece')
+          state'@(grid',move',piece') = settle state (2,yMax+3)
 
-move' :: State -> Point -> State
-move' state@(grid,moves,piece) pos = if stop then (grid', tail moves, nextPiece) else move' (grid, tail moves, piece) fell
+settle :: State -> Point -> State
+settle state@(grid,moves,piece) pos = if stop then (grid', tail moves, nextPiece) else settle (grid, tail moves, piece) fell
     where nextPiece = (piece + 1) `mod` length pieces
           pushed = push state (head moves) pos
           (fell, stop) = fall state pushed
@@ -42,17 +47,31 @@ fall (grid,_,piece) (x,y) = if any invalid candidates then ((x,y),True) else (ne
           invalid (x,y) = y < 0 || (x,y) `S.member` grid
 
 display :: State -> [String]
-display (grid,moves,_) = [[if (x,y) `S.member` grid then '#' else '.' | x <- [0..6]] | y <- reverse [0..yMax]]
+display (grid,moves,_) = [[if (x,y) `S.member` grid then '#' else '.' | x <- [0..6]] | y <- reverse [yMin..yMax]]
     where yMax = if S.null grid then 0 else maximum $ S.map snd $ grid
           yMin = if S.null grid then 0 else minimum $ S.map snd $ grid
 
 part1 :: String -> Int
-part1 moves = yMax + 1
+part1 moves = height 2022 moves
+
+height :: Int -> String -> Int
+height n moves = yMax + 1
     where start = (S.empty, cycle moves, 0)
-          n = 2022 + 1
-          (grid,_,_) = last $ take n $ iterate move start
+          (grid,_,_) = last $ take (n+1) $ iterate move start
           yMax = maximum $ S.map snd $ grid
+
+topAfter :: Int -> String -> [String]
+topAfter n moves = display $ (S.filter (((<)(yMax-10)).snd) grid,"",0)
+    where start = (S.empty, cycle moves, 0)
+          s@(grid,_,_) = last $ take (n+1) $ iterate move start
+          yMax = maximum $ S.map snd $ grid
+
+debug n = putStrLn $ unlines $ topAfter n ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"
+
+part2 :: String -> Int
+part2 moves = undefined
 
 main = do
     moves <- readFile "day17.txt"
     print $ part1 moves
+    print $ height (10091*5*4) moves
