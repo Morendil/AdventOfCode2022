@@ -62,7 +62,7 @@ dists valves = M.fromList $ [((from,to),dist charted from to) | from<-map name v
     where charted = chart valves
 
 part1 :: [Valve] -> Int
-part1 valves = length $ snd $ last $ take n $ iterate (advance charted) initial
+part1 valves = maximum $ map pressure $ snd $ last $ take n $ iterate (advance charted) initial
     where charted = chart valves
           start = State { location="AA", open=S.empty, pressure=0 }
           initial = (n, [start])
@@ -77,7 +77,7 @@ part2 valves = maximum $ [pressure s1 + pressure s2 | s1:elephants <- tails path
           pathsTaken = snd $ last $ take n $ iterate (advance charted) initial
 
 main = do
-    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16.txt"
+    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16_sample.txt"
     print $ part1 valves
     print $ part2 valves
 
