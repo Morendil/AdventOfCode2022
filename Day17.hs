@@ -66,12 +66,35 @@ topAfter n moves = display $ (S.filter (((<)(yMax-10)).snd) grid,"",0)
           s@(grid,_,_) = last $ take (n+1) $ iterate move start
           yMax = maximum $ S.map snd $ grid
 
+top :: State -> String
+top (grid,_,_) = concat $ display $ (S.filter (((<)(yMax-10)).snd) grid,"",0)
+    where yMax = if S.null grid then 0 else maximum $ S.map snd $ grid
+
 debug n = putStrLn $ unlines $ topAfter n ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"
 
 part2 :: String -> Int
-part2 moves = undefined
+part2 moves = cycleHeight * (1000000000000 `div` period) + height (1000000000000 `mod` period) moves
+    where (init,loop) = findCycle $ map top $ states
+          initHeight = height front moves
+          cycleHeight = height (front + period) moves - initHeight
+          states = filter (\(_,_,p) -> p `mod` 5 == 0) $ iterate move (S.empty, cycle moves, 0)
+          period = length loop * 5
+          front = length init * 5
+
+findCycle :: Eq a => [a] -> ([a],[a])
+findCycle xxs = fCycle xxs xxs
+  where fCycle (x:xs) (_:y:ys)
+         | x == y              = fStart xxs xs
+         | otherwise           = fCycle xs ys
+        fCycle _      _        = (xxs,[]) -- not cyclic
+        fStart (x:xs) (y:ys)
+         | x == y              = ([], x:fLength x xs)
+         | otherwise           = let (as,bs) = fStart xs ys in (x:as,bs)
+        fLength x (y:ys)
+         | x == y              = []
+         | otherwise           = y:fLength x ys
 
 main = do
     moves <- readFile "day17.txt"
     print $ part1 moves
-    print $ height (10091*5*4) moves
+    print $ part2 moves
