@@ -34,7 +34,8 @@ isShut Valve{name,rate} = name /= "AA" && rate==0
 
 unlink :: Valve -> Valve -> Valve
 unlink remove@Valve{name=xname,exits=rx} v@Valve{name,exits} = if xname `elem` (map fst exits) then v {exits=exits'} else v
-    where exits' = let m = M.fromList exits in M.assocs $ M.delete xname $ M.insert theOther (succ $ M.findWithDefault 1 xname m) $ m
+    where exits' = M.assocs $ M.delete xname $ M.insert theOther merge $ M.fromList exits
+          merge = (M.findWithDefault 1 theOther $ M.fromList rx) + (M.findWithDefault 1 xname $ M.fromList exits)
           theOther = head $ map fst rx \\ [name]
 
 neighbours :: Chart -> State -> [State]
