@@ -64,7 +64,7 @@ part2 valves = maximum $ [pressure s1 + pressure s2 | s1:elephants <- tails path
           pathsTaken = fst $ last $ takeUntil snd $ iterate (advance charted) ([start],False)
 
 main = do
-    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16_sample.txt"
+    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16.txt"
     print $ part1 $ adjust valves
     print $ part2 $ adjust valves
 
