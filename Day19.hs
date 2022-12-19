@@ -35,14 +35,26 @@ expand blueprint (states, inventories) = (waiting ++ buying, inventories')
           inventories' = S.fromList $ map snd buying
           waiting = map (\s@(stocks,bots) -> (harvest s, bots)) states
 
-best :: Blueprint -> Int
-best blueprint = maximum $ map (flip(!!)3.fst) $ fst $ last $ take 25 $ iterate (expand blueprint) initial
+best :: Int -> Blueprint -> Int
+best n blueprint = if toObsidian+toGeode > n then 0 else maximum $ map ((\s->s!!3).fst) $ fst $ last $ take (n+1-toObsidian-toGeode) $ iterate (expand blueprint) withGeode'
+    where buildObsidian = takeUntil (any (\s->(fst s)!!2>2).fst) $ iterate (expand blueprint) initial
+          withObsidian = filter (\s->(fst s)!!2>0) $ fst $ last $ buildObsidian
+          toObsidian = length buildObsidian -1
+          buildGeode = takeUntil (any (\s->(fst s)!!3>0).fst) $ iterate (expand blueprint) withObsidian'
+          withGeode = filter (\s->(fst s)!!3>0) $ fst $ last $ buildGeode
+          toGeode = length buildGeode - 1
+          -- 
+          withInv s = (s, S.fromList $ map snd s)
+          withObsidian' = withInv withObsidian
+          withGeode' = withInv withGeode
 
 initial = ([([0,0,0,0],[1,0,0,0])], S.empty)
 
-part1 :: [Blueprint] -> [Int]
--- sum $ zipWith (*) [1..] map best
-part1 = map best
+part1 :: [Blueprint] -> Int
+part1 = sum . zipWith (*) [1..] . map (best 24)
+
+part2 :: [Blueprint] -> Int
+part2 = product . map (best 32) . take 3
 
 parse :: String -> [[Int]]
 parse = chunk . tail . map read . words . stripJunk
@@ -51,5 +63,5 @@ parse = chunk . tail . map read . words . stripJunk
 
 main = do
     blueprints <- map parse . lines <$> readFile "day19.txt"
-    print blueprints
     print $ part1 blueprints
+    print $ part2 blueprints
