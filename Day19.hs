@@ -2,6 +2,7 @@ import Data.Char
 import Data.Maybe
 import Data.List
 import Data.List.HT
+import qualified Data.Set as S
 
 type Stocks = [Int]
 type Bots = [Int]
@@ -21,25 +22,26 @@ build blueprint stocks' (stocks, bots) resource = if enough then Just (depleted,
           bots' = (take resource bots)++[(bots !! resource)+1]++(drop (resource+1) bots)
 
 step :: Blueprint -> State -> [State]
-step blueprint s@(stocks, bots) = [(stocks',bots)]++mapMaybe (build blueprint stocks' s) (filter useful [0..3])
+step blueprint s@(stocks, bots) = mapMaybe (build blueprint stocks' s) (filter useful [0..3])
     where stocks' = harvest s
           maxCosts = take 3 $ foldl1 (zipWith max) $ map (padRight 0 4) $ blueprint
           useful 3 = True
           useful n = bots !! n < maxCosts !! n
 
-expand :: Blueprint -> [State] -> [State]
-expand blueprint states = concatMap (step blueprint) states
+expand :: Blueprint -> ([State], S.Set Bots) -> ([State], S.Set Bots)
+expand blueprint (states, inventories) = (waiting ++ buying, inventories')
+    where buying = filter notRedundant $ S.toList $ S.fromList $ concatMap (step blueprint) states
+          notRedundant = flip S.notMember inventories . snd
+          inventories' = S.fromList $ map snd buying
+          waiting = map (\s@(stocks,bots) -> (harvest s, bots)) states
 
 best :: Blueprint -> Int
-best blueprint =  if toObsidian+toGeode > 24 then 0 else maximum $ map ((\s->s!!3).fst) $ last $ take (25-toObsidian-toGeode) $ iterate (expand blueprint) withGeode
-    where buildObsidian = takeUntil (any (\s->(fst s)!!2>1)) $ iterate (expand blueprint) [([0,0,0,0],[1,0,0,0])]
-          withObsidian = filter (\s->(fst s)!!2>0) $ last $ buildObsidian
-          toObsidian = length buildObsidian -1
-          buildGeode = takeUntil (any (\s->(fst s)!!3>0)) $ iterate (expand blueprint) withObsidian
-          withGeode = filter (\s->(fst s)!!3>0) $ last $ buildGeode
-          toGeode = length buildGeode - 1
+best blueprint = maximum $ map (flip(!!)3.fst) $ fst $ last $ take 25 $ iterate (expand blueprint) initial
+
+initial = ([([0,0,0,0],[1,0,0,0])], S.empty)
 
 part1 :: [Blueprint] -> [Int]
+-- sum $ zipWith (*) [1..] map best
 part1 = map best
 
 parse :: String -> [[Int]]
