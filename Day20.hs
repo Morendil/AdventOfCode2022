@@ -10,6 +10,12 @@ part1 numbers = flattened !! (1000`mod`n) + flattened !! (2000`mod`n) + flattene
           flattened = encToList $ mix encrypted
           n = length numbers
 
+part2 :: [Int] -> Int
+part2 numbers = flattened !! (1000`mod`n) + flattened !! (2000`mod`n) + flattened !! (3000`mod`n)
+    where encrypted = encFromList $ map (*811589153) numbers
+          flattened = encToList $ last $ take 11 $ iterate mix encrypted
+          n = length numbers
+
 mix :: Encrypted -> Encrypted
 mix encrypted = foldl (flip move) encrypted [1..n]
     where n = M.size encrypted
@@ -46,3 +52,4 @@ move n encrypted = if offset == 0 then encrypted else makeMove encrypted
 main = do
     numbers <- map parse . lines <$> readFile "day20.txt"
     print $ part1 numbers
+    print $ part2 numbers
