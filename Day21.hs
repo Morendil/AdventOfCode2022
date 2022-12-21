@@ -28,9 +28,21 @@ eval monkeys name = do
 part1 :: [Monkey] -> Int
 part1 monkeys = evalState (eval monkeys "root") M.empty
 
+try :: Int -> [Monkey] -> (Int, Int)
+try n monkeys = (evalState (eval monkeys m1) initial, evalState (eval monkeys m2) initial)
+    where Expr _ m1 m2 = fromJust $ lookup "root" monkeys
+          initial = M.insert "humn" n M.empty
+
+search :: [Monkey] -> Int -> Int -> Int
+search monkeys low high | low >= high = low
+search monkeys low high = if result == target then midpoint else if result > target then search monkeys (midpoint+1) high else search monkeys low midpoint
+    where (result, target) = try midpoint monkeys
+          midpoint = (low + high) `div` 2
+
 main = do
     monkeys <- fromJust . parseMaybe (sepBy1 monkey (string "\n")) <$> readFile "day21.txt"
-    print $ part1 monkeys
+    -- print $ part1 monkeys
+    print $ search monkeys 3000000000000 4000000000000
 
 operation :: String -> (Int -> Int -> Int)
 operation " * " = (*)
