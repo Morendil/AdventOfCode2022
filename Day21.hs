@@ -28,21 +28,33 @@ eval monkeys name = do
 part1 :: [Monkey] -> Int
 part1 monkeys = evalState (eval monkeys "root") M.empty
 
+part2 :: [Monkey] -> Int
+part2 monkeys = search monkeys
+
 try :: Int -> [Monkey] -> (Int, Int)
 try n monkeys = (evalState (eval monkeys m1) initial, evalState (eval monkeys m2) initial)
     where Expr _ m1 m2 = fromJust $ lookup "root" monkeys
           initial = M.insert "humn" n M.empty
 
-search :: [Monkey] -> Int -> Int -> Int
-search monkeys low high | low >= high = low
-search monkeys low high = if result == target then midpoint else if result > target then search monkeys (midpoint+1) high else search monkeys low midpoint
+search :: [Monkey] -> Int
+search monkeys = search' monkeys (signum $ high-low) startLow startHigh
+    where low = fst $ try startLow monkeys
+          high = fst $ try startHigh monkeys
+          startLow = minBound `div` 1000
+          startHigh = maxBound `div` 1000
+
+search' :: [Monkey] -> Int -> Int -> Int -> Int
+search' monkeys _ low high | low >= high = low
+search' monkeys sign low high = if result == target then midpoint else if signum (target-result) == sign then searchHigh else searchLow
     where (result, target) = try midpoint monkeys
           midpoint = (low + high) `div` 2
+          searchHigh = search' monkeys sign (midpoint+1) high
+          searchLow = search' monkeys sign low midpoint
 
 main = do
     monkeys <- fromJust . parseMaybe (sepBy1 monkey (string "\n")) <$> readFile "day21.txt"
-    -- print $ part1 monkeys
-    print $ search monkeys 3000000000000 4000000000000
+    print $ part1 monkeys
+    print $ part2 monkeys
 
 operation :: String -> (Int -> Int -> Int)
 operation " * " = (*)
