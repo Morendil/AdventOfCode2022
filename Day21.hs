@@ -3,38 +3,29 @@ import Text.ParserCombinators.ReadP hiding (get)
 import Data.Char (isNumber, isAlpha)
 import Data.Maybe
 import Data.Functor
-import qualified Data.Map as M
+import Data.List
 import Control.Monad.Trans.State
 
 type Monkey = (String, Expr)
 data Expr = Expr String String String | Const Int
     deriving (Eq, Show)
-type Cache = M.Map String Int
 
-eval :: [Monkey] -> String -> State Cache Int
-eval monkeys name = do
-    cache <- get
-    let cached = M.lookup name cache
-    if isJust cached then return $ fromJust cached
-    else case lookup name monkeys of
+eval :: [Monkey] -> String -> Int
+eval monkeys name = case lookup name monkeys of
             Nothing -> error "No such monkey"
-            Just (Const value) -> return value
-            Just (Expr op arg1 arg2) -> do
-                val1 <- eval monkeys arg1
-                val2 <- eval monkeys arg2
-                let result = (operation op) val1 val2
-                return result
+            Just (Const value) -> value
+            Just (Expr op arg1 arg2) -> (operation op) (eval monkeys arg1) (eval monkeys arg2)
 
 part1 :: [Monkey] -> Int
-part1 monkeys = evalState (eval monkeys "root") M.empty
+part1 monkeys = eval monkeys "root"
 
 part2 :: [Monkey] -> Int
 part2 monkeys = search monkeys
 
 try :: Int -> [Monkey] -> (Int, Int)
-try n monkeys = (evalState (eval monkeys m1) initial, evalState (eval monkeys m2) initial)
+try n monkeys = (eval monkeys' m1, eval monkeys' m2)
     where Expr _ m1 m2 = fromJust $ lookup "root" monkeys
-          initial = M.insert "humn" n M.empty
+          monkeys' = ("humn",Const n):(filter ((/=)"humn".fst) monkeys)
 
 search :: [Monkey] -> Int
 search monkeys = search' monkeys (signum $ high-low) startLow startHigh
