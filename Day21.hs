@@ -4,7 +4,6 @@ import Data.Char (isNumber, isAlpha)
 import Data.Maybe
 import Data.Functor
 import Data.List
-import Control.Monad.Trans.State
 
 type Monkey = (String, Expr)
 data Expr = Expr String String String | Const Int
