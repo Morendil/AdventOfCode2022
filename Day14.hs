@@ -58,7 +58,7 @@ part1 veins = takeUntil isDone $ iterate (step yMax) initial
         scan = scanAll veins
         initial = State scan False
         (_,(_,yMax)) = bounds $ M.keys scan
-        isDone (State _ done) = done        
+        isDone (State _ done) = done
 
 part2 :: [[Point]] -> [State]
 part2 veins = takeUntil isDone $ iterate (step2 (yMax+2)) initial
@@ -68,7 +68,7 @@ part2 veins = takeUntil isDone $ iterate (step2 (yMax+2)) initial
         scan = scanAll $ floor:veins
         initial = State scan False
         (_,(_,yMax)) = bounds $ M.keys firstScan
-        isDone (State _ done) = done        
+        isDone (State _ done) = done
 
 main = do
     veins <- fromJust . parseMaybe veins <$> readFile "day14.txt"
