@@ -61,7 +61,7 @@ wrapMoveCube _ grid (dir, pos) prev (Move 0) = (dir, pos)
 wrapMoveCube porter grid (dir, pos) prev@(_,oldPos) (Move n) = case grid !! nextY !! nextX of
                                         '#' -> prev
                                         '.' -> wrapMoveCube porter grid next next $ Move (n-1)
-                                        ' ' -> if dest == '#' then prev else wrapMoveCube porter grid port port $ Move n
+                                        ' ' -> if dest == '#' then prev else wrapMoveCube porter grid port port $ Move (n-1)
                                         _ -> error "What's that ?"
     where (newX, newY) = add pos $ fromJust $ lookup dir offsets
           next@(dir',(nextX, nextY)) = if wrap then porter pos (dir,(newX, newY)) else (dir,(newX,newY))
@@ -95,7 +95,7 @@ inputPorter (fx,fy) (dir,(x,y)) = case (fx`div`side,fy`div`side,dir) of
     (2,0,GoUp) -> (GoUp, (0*side+x',4*side-1)) -- to 6
     -- cell 3
     (1,1,GoRight) -> (GoUp,(2*side+y',1*side-1)) -- to 2
-    (1,1,GoLeft) -> (GoDown,(1*side-1-y',2*side)) -- to 4
+    (1,1,GoLeft) -> (GoDown,(y',2*side)) -- to 4
     -- cell 4
     (0,2,GoLeft) -> (GoRight,(1*side,1*side-1-y')) -- to 1
     (0,2,GoUp) -> (GoRight,(1*side,1*side+x')) -- to 3
@@ -124,9 +124,7 @@ part2 (cubePorter, side, fileName) = do
     let (grid, _:[moves]) = break null input
         instructions = parseCommands moves
         grid' = map (padRight ' ' (maximum $ map length grid)) grid
-    -- print $ execute (wrapMoveCube cubePorter) grid' instructions
-    let turns = map swap $ scanl (step (wrapMoveCube cubePorter) grid') (GoRight, start grid) instructions
-    print turns
+    print $ score $ execute (wrapMoveCube cubePorter) grid' instructions
     -- putStrLn $ unlines $ [[let c=lookup (x,y) turns in maybe (grid' !! y !! x) display c | x <- [0..(3*side)-1]] | y <- [0..(4*side)-1]]
 
 display GoRight = '>'
