@@ -93,8 +93,7 @@ neighboursM chart world = do
     let newStates = filter isImprovement $ neighbours chart world
         isImprovement World {location,open,pressure} = let found = M.lookup (location, open) scores in isNothing found || pressure > fromJust found
         newScores = map (\s -> ((location s, open s),pressure s)) newStates
-        oldScores = M.assocs scores
-        scores' = M.fromList $ oldScores ++ newScores
+        scores' = M.union (M.fromList newScores) scores
     modify $ \ global -> global { count=count + length newStates, scores=scores' }
     return newStates
 
