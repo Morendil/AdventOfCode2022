@@ -18,6 +18,8 @@ data World = World { location :: String, open :: S.Set String, pressure :: Int, 
     deriving (Eq, Show)
 data Global = Global { count::Int, scores::M.Map (String, S.Set String) Int }
     deriving (Eq, Show)
+data Global2 = Global2 { count2::Int, scores2::M.Map ((String, String), S.Set String) Int }
+    deriving (Eq, Show)
 
 instance Ord World where
     compare World {location=l1,open=o1,pressure=p1,time=t1} World {location=l2,open=o2,pressure=p2,time=t2} = compare (p1,t1,o1,l1) (p2,t2,o2,l2)
@@ -59,6 +61,17 @@ neighboursM chart world = do
     modify $ \ global -> global { count=count + length newStates, scores=scores' }
     return newStates
 
+neighboursM2 :: Chart -> (World, World) -> State Global2 [(World, World)]
+neighboursM2 chart (world1, world2) = do
+    Global2 {count2, scores2} <- get
+    let newStates = filter isImprovement $ [(n1,n2) | n1 <- neighbours chart world1, n2 <- neighbours chart world2, S.disjoint (open n1) (open n2)]
+        isImprovement (w1, w2) = isNothing found || (pressure w1+pressure w2) > fromJust found
+            where found = M.lookup ((location w1, location w2), S.union (open w1) (open w2)) scores2
+        newScores = map (\(s1,s2) -> (((location s1, location s2), S.union (open s1) (open s2)),pressure s1+pressure s2)) newStates
+        scores' = M.union (M.fromList newScores) scores2
+    modify $ \ global -> global { count2=count2 + length newStates, scores2=scores' }
+    return newStates
+
 part1 :: [Valve] -> Int
 part1 valves = maximum $ M.elems $ scores $ snd result
     where charted = chart $ adjust valves
@@ -68,9 +81,19 @@ part1 valves = maximum $ M.elems $ scores $ snd result
           result = runState process initial
           initial = Global { count=0, scores=M.empty }
 
+part2 :: [Valve] -> Int
+part2 valves = maximum $ M.elems $ scores2 $ snd result
+    where charted = chart $ adjust valves
+          goalM w = return False
+          start = World { location="AA", open=S.empty, pressure=0, time=26 }
+          process = bfsM (neighboursM2 charted) goalM (start, start)
+          result = runState process initial
+          initial = Global2 { count2=0, scores2=M.empty }
+
 main = do
     valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16.txt"
     print $ part1 $ adjust valves
+    print $ part2 $ adjust valves
 
 valve :: ReadP Valve
 valve = do
