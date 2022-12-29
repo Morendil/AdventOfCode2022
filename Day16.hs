@@ -11,7 +11,6 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import Algorithm.Search
 import Control.Monad.State
-import Debug.Trace
 
 data Valve = Valve { name :: String, rate :: Int, exits :: [(String,Int)]}
     deriving (Eq, Show)
@@ -50,43 +49,6 @@ neighbours chart state@World { location, open, pressure, time } = if time == 0 t
           moves = [state { location=name, time=max 0 time' } | (name,cost) <- exits, let time'=time-cost]
           openHere = [state { open=S.insert location open, pressure=pressure+(rate*(time-1)), time=time-1 } | not (location `S.member` open || rate == 0 || time == 0)]
 
-advance :: Chart -> ([World], Bool) -> ([World], Bool)
-advance chart (states, True) = (states, True)
-advance chart (states, _) = (keepBest $ newStates, done)
-    where newStates = concatMap (neighbours chart) states
-          done = length newStates == length states
-          keepBest = M.elems . M.fromListWith max . map (\s -> ((location s, open s),s))
-
-part1 :: [Valve] -> Int
-part1 valves = maximum $ map pressure $ fst $ last $ takeUntil snd $ iterate (advance charted) ([start],False)
-    where charted = chart valves
-          start = World { location="AA", open=S.empty, pressure=0, time=30 }
-
-part2 :: [Valve] -> Int
-part2 valves = maximum $ [pressure s1 + pressure s2 | s1:elephants <- tails pathsTaken, s2 <- elephants, S.disjoint (open s1) (open s2)]
-    where charted = chart valves
-          start = World { location="AA", open=S.empty, pressure=0, time=26 }
-          pathsTaken = fst $ last $ takeUntil snd $ iterate (advance charted) ([start],False)
-
-main = do
-    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16.txt"
-    -- print $ part1 $ adjust valves
-    -- print $ part2 $ adjust valves
-    let charted = chart $ adjust valves
-        costM w1 w2 = return $ pressure w1 - pressure w2
-        cost w1 w2 = pressure w1 - pressure w2
-        goal w = time w == 0
-        start = World { location="AA", open=S.empty, pressure=0, time=30 }
-        process = bfsM (neighboursM charted) goalM start
-        result = runState process initial
-    print $ count $ snd result
-    print $ maximum $ M.elems $ scores $ snd result
-
-goalM :: World -> State Global Bool
-goalM w = return False
-
-initial = Global { count=0, scores=M.empty }
-
 neighboursM :: Chart -> World -> State Global [World]
 neighboursM chart world = do
     Global {count, scores} <- get
@@ -97,10 +59,18 @@ neighboursM chart world = do
     modify $ \ global -> global { count=count + length newStates, scores=scores' }
     return newStates
 
-display :: [Valve] -> [String]
-display valves = map nodeSpec valves ++ concatMap edgeSpec valves
-    where nodeSpec Valve { name , rate } = name ++ " [label = \"" ++ name ++ " (" ++ show rate ++ ")\"];"
-          edgeSpec Valve { name , exits } = map ((\exit -> name ++ " -> " ++ exit ++ ";") . fst) exits
+part1 :: [Valve] -> Int
+part1 valves = maximum $ M.elems $ scores $ snd result
+    where charted = chart $ adjust valves
+          goalM w = return False
+          start = World { location="AA", open=S.empty, pressure=0, time=30 }
+          process = bfsM (neighboursM charted) goalM start
+          result = runState process initial
+          initial = Global { count=0, scores=M.empty }
+
+main = do
+    valves <- fromJust . parseMaybe (sepBy1 valve (string "\n")) <$> readFile "day16.txt"
+    print $ part1 $ adjust valves
 
 valve :: ReadP Valve
 valve = do
